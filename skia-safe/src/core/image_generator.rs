@@ -2,12 +2,10 @@
 use crate::gpu;
 use crate::prelude::*;
 use crate::{
-    image, ColorSpace, Data, ISize, ImageInfo, Matrix, Paint, Picture, YUVAIndex, YUVASizeInfo,
-    YUVColorSpace,
+    image, ColorSpace, Data, ISize, ImageInfo, Matrix, Paint, Picture
 };
 use skia_bindings as sb;
 use skia_bindings::SkImageGenerator;
-use std::ffi::c_void;
 
 pub type ImageGenerator = RefHandle<SkImageGenerator>;
 unsafe impl Send for ImageGenerator {}
@@ -54,57 +52,41 @@ impl RefHandle<SkImageGenerator> {
 
     // TODO: m86: get_pixels(&Pixmap)
 
-    pub fn query_yuva8(
-        &self,
-    ) -> Option<(
-        YUVASizeInfo,
-        [YUVAIndex; YUVAIndex::INDEX_COUNT],
-        YUVColorSpace,
-    )> {
-        let mut size_info = YUVASizeInfo::default();
-        let mut indices = [YUVAIndex::default(); YUVAIndex::INDEX_COUNT];
-        let mut cs = YUVColorSpace::Identity;
-        unsafe {
-            self.native().queryYUVA8(
-                size_info.native_mut(),
-                indices.native_mut().as_mut_ptr(),
-                &mut cs,
-            )
-        }
-        .if_true_some((size_info, indices, cs))
-    }
-
-    pub fn get_yuva8_planes(
-        &mut self,
-        size_info: &YUVASizeInfo,
-        yuva_indices: &[YUVAIndex; YUVAIndex::INDEX_COUNT],
-        planes: &mut [&mut [u8]],
-    ) -> bool {
-        for index in yuva_indices {
-            if index.is_valid() {
-                let index = index.index as usize;
-                let height = size_info.sizes[index].height;
-                let width_bytes = size_info.width_bytes[index];
-                let plane_size = width_bytes * height as usize;
-                if planes[index].len() < plane_size {
-                    return false;
-                }
-            }
-        }
-
-        let mut planes: Vec<*mut c_void> = planes
-            .iter_mut()
-            .map(|p| p.as_mut_ptr() as *mut c_void)
-            .collect();
-
-        unsafe {
-            self.native_mut().getYUVA8Planes(
-                size_info.native(),
-                yuva_indices.native().as_ptr(),
-                planes.as_mut_ptr(),
-            )
-        }
-    }
+//
+//    pub fn get_yuva_planes(
+//        &mut self,
+//        size_info: &YUVASizeInfo,
+//        yuva_indices: &[YUVAIndex; YUVAIndex::INDEX_COUNT],
+//        planes: &mut [&mut [u8]],
+//    ) -> bool {
+//        for index in yuva_indices {
+//            if index.is_valid() {
+//                let index = index.index as usize;
+//                let height = size_info.sizes[index].height;
+//                let width_bytes = size_info.width_bytes[index];
+//                let plane_size = width_bytes * height as usize;
+//                if planes[index].len() < plane_size {
+//                    return false;
+//                }
+//            }
+//        }
+//
+//        let mut planes: Vec<*mut c_void> = planes
+//            .iter_mut()
+//            .map(|p| p.as_mut_ptr() as *mut c_void)
+//            .collect();
+//        let pixmaps = sb::SkYUVAPixmapInfo{
+//            fYUVAInfo: SkYUVAInfo {},
+//            fPlaneInfos: [],
+//            fRowBytes: [],
+//            fDataType: SkYUVAPixmapInfo_DataType::kUnorm8
+//        };
+//        unsafe {
+//            self.native_mut().getYUVAPlanes(
+//                size_info.native(),
+//            )
+//        }
+//    }
 
     // TODO: generateTexture()
 

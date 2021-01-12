@@ -174,20 +174,12 @@ impl<'lt> Default for OwnedCanvas<'lt> {
     }
 }
 
-#[deprecated(
-    since = "0.34.0",
-    note = "Use `&mut canvas` to pass an exclusive reference."
-)]
 impl AsMut<Canvas> for Canvas {
     fn as_mut(&mut self) -> &mut Canvas {
         self
     }
 }
 
-#[deprecated(
-    since = "0.34.0",
-    note = "Use `&mut canvas` to pass an exclusive reference."
-)]
 impl<'lt> AsMut<Canvas> for OwnedCanvas<'lt> {
     fn as_mut(&mut self) -> &mut Canvas {
         self.deref_mut()
@@ -300,10 +292,10 @@ impl Canvas {
     }
 
     // TODO: test ref count consistency assuming it is not increased in the native part.
-    #[cfg(feature = "gpu")]
-    pub fn gpu_context(&mut self) -> Option<gpu::Context> {
-        gpu::Context::from_unshared_ptr(unsafe { sb::C_SkCanvas_getGrContext(self.native_mut()) })
-    }
+//    #[cfg(feature = "gpu")]
+//    pub fn gpu_context(&mut self) -> Option<gpu::Context> {
+//        gpu::Context::from_unshared_ptr(unsafe { sb::C_SkCanvas_getGrContext(self.native_mut()) })
+//    }
 
     /// # Safety
     /// This function is unsafe because it is not clear how exactly the lifetime of the canvas

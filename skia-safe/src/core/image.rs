@@ -3,7 +3,7 @@ use crate::gpu;
 use crate::prelude::*;
 use crate::{
     AlphaType, Bitmap, ColorSpace, ColorType, Data, EncodedImageFormat, IPoint, IRect, ISize,
-    ImageInfo, Matrix, Paint, Picture, Shader, TileMode,
+    ImageInfo, Matrix, Paint, Picture, Shader, TileMode
 };
 use crate::{FilterQuality, ImageFilter, ImageGenerator, Pixmap};
 use skia_bindings as sb;
@@ -271,37 +271,37 @@ impl RCHandle<SkImage> {
             )
         })
     }
-
-    #[allow(clippy::too_many_arguments)]
-    #[cfg(feature = "gpu")]
-    pub fn from_yuva_textures_copy_with_external_backend(
-        context: &mut gpu::RecordingContext,
-        yuv_color_space: crate::YUVColorSpace,
-        yuva_textures: &[gpu::BackendTexture],
-        yuva_indices: &[crate::YUVAIndex; 4],
-        image_size: impl Into<ISize>,
-        image_origin: gpu::SurfaceOrigin,
-        backend_texture: &gpu::BackendTexture,
-        image_color_space: impl Into<Option<ColorSpace>>,
-        // TODO: m78 introduced textureReleaseProc and releaseContext here.
-    ) -> Option<Image> {
-        Image::from_ptr(unsafe {
-            sb::C_SkImage_MakeFromYUVATexturesCopyWithExternalBackend(
-                context.native_mut(),
-                yuv_color_space,
-                yuva_textures.native().as_ptr(),
-                yuva_indices.native().as_ptr(),
-                image_size.into().into_native(),
-                image_origin,
-                backend_texture.native(),
-                image_color_space.into().into_ptr_or_null(),
-            )
-        })
-    }
+//
+//    #[allow(clippy::too_many_arguments)]
+//    #[cfg(feature = "gpu")]
+//    pub fn from_yuva_textures_copy_with_external_backend(
+//        context: &mut gpu::RecordingContext,
+//        yuv_color_space: crate::YUVColorSpace,
+//        yuva_textures: &[gpu::BackendTexture],
+//        yuva_indices: &[crate::YUVAIndex; 4],
+//        image_size: impl Into<ISize>,
+//        image_origin: gpu::SurfaceOrigin,
+//        backend_texture: &gpu::BackendTexture,
+//        image_color_space: impl Into<Option<ColorSpace>>,
+//        // TODO: m78 introduced textureReleaseProc and releaseContext here.
+//    ) -> Option<Image> {
+//        Image::from_ptr(unsafe {
+//            sb::C_SkImage_MakeFromYUVATexturesCopyWithExternalBackend(
+//                context.native_mut(),
+//                yuv_color_space,
+//                yuva_textures.native().as_ptr(),
+//                yuva_indices.native().as_ptr(),
+//                image_size.into().into_native(),
+//                image_origin,
+//                backend_texture.native(),
+//                image_color_space.into().into_ptr_or_null(),
+//            )
+//        })
+//    }
 
     #[cfg(feature = "gpu")]
     pub fn from_yuva_textures(
-        context: &mut gpu::Context,
+        context: &mut gpu::RecordingContext,
         yuv_color_space: crate::YUVColorSpace,
         yuva_textures: &[gpu::BackendTexture],
         yuva_indices: &[crate::YUVAIndex; 4],
@@ -327,10 +327,11 @@ impl RCHandle<SkImage> {
 
     #[cfg(feature = "gpu")]
     pub fn from_nv12_textures_copy(
-        context: &mut gpu::Context,
+        context: &mut gpu::RecordingContext,
         yuv_color_space: crate::YUVColorSpace,
         nv12_textures: &[gpu::BackendTexture; 2],
         image_origin: gpu::SurfaceOrigin,
+        backendTexture: gpu::BackendTexture,
         image_color_space: impl Into<Option<ColorSpace>>,
     ) -> Option<Image> {
         Image::from_ptr(unsafe {
@@ -339,6 +340,8 @@ impl RCHandle<SkImage> {
                 yuv_color_space,
                 nv12_textures.native().as_ptr(),
                 image_origin,
+                backendTexture.native(),
+
                 image_color_space.into().into_ptr_or_null(),
             )
         })
@@ -346,7 +349,7 @@ impl RCHandle<SkImage> {
 
     #[cfg(feature = "gpu")]
     pub fn from_nv12_textures_copy_with_external_backend(
-        context: &mut gpu::Context,
+        context: &mut gpu::RecordingContext,
         yuv_color_space: crate::YUVColorSpace,
         nv12_textures: &[gpu::BackendTexture; 2],
         image_origin: gpu::SurfaceOrigin,
@@ -579,6 +582,7 @@ impl RCHandle<SkImage> {
 
     pub fn read_pixels<P>(
         &self,
+        context: Option<&mut gpu::DirectContext>,
         dst_info: &ImageInfo,
         pixels: &mut [P],
         dst_row_bytes: usize,
@@ -595,6 +599,10 @@ impl RCHandle<SkImage> {
 
         unsafe {
             self.native().readPixels(
+                match context {
+                    None => ptr::null_mut(),
+                    Some(c)=>c.native_mut(),
+                },
                 dst_info.native(),
                 pixels.as_mut_ptr() as _,
                 dst_row_bytes,

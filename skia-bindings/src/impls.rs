@@ -8,7 +8,7 @@
 
 use crate::{
     SkAlphaType, SkBlendMode, SkBlendModeCoeff, SkImage_CompressionType,
-    SkImage_kCompressionTypeCount, SkPathFillType, SkPathVerb, SkPath_Verb,
+    SkImage_kCompressionTypeCount, SkPathFillType,SkPathVerb, SkPath_Verb,
 };
 use std::ffi::CStr;
 

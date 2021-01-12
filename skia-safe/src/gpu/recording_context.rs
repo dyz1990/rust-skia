@@ -2,7 +2,7 @@ use crate::gpu::{BackendAPI, BackendFormat, DirectContext, Renderable};
 use crate::prelude::*;
 use crate::{image, ColorType};
 use skia_bindings as sb;
-use skia_bindings::{GrContext, GrDirectContext, GrRecordingContext, SkRefCntBase};
+use skia_bindings::{GrContext_Base, GrDirectContext, GrRecordingContext, SkRefCntBase};
 
 pub type RecordingContext = RCHandle<GrRecordingContext>;
 
@@ -10,8 +10,8 @@ impl NativeRefCountedBase for GrRecordingContext {
     type Base = SkRefCntBase;
 }
 
-impl From<RCHandle<GrContext>> for RCHandle<GrRecordingContext> {
-    fn from(direct_context: RCHandle<GrContext>) -> Self {
+impl From<RCHandle<GrContext_Base>> for RCHandle<GrRecordingContext> {
+    fn from(direct_context: RCHandle<GrContext_Base>) -> Self {
         unsafe { std::mem::transmute(direct_context) }
     }
 }
@@ -85,5 +85,21 @@ impl RCHandle<GrRecordingContext> {
         }
         .try_into()
         .unwrap()
+    }
+
+
+    pub fn max_texture_size(&self) -> i32 {
+        unsafe { self.native().maxTextureSize() }
+    }
+
+    pub fn max_render_target_size(&self) -> i32 {
+        unsafe { self.native().maxRenderTargetSize() }
+    }
+
+    pub fn color_type_supported_as_image(&self, color_type: crate::ColorType) -> bool {
+        unsafe {
+            self.native()
+                .colorTypeSupportedAsImage(color_type.into_native())
+        }
     }
 }

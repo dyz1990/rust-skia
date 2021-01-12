@@ -2,7 +2,7 @@ use crate::interop::DynamicMemoryWStream;
 use crate::matrix::ApplyPerspectiveClip;
 use crate::prelude::*;
 use crate::{
-    path_types, scalar, Data, Matrix, PathConvexityType, PathDirection, PathFillType, Point, RRect,
+    path_types, scalar, Data, Matrix, PathDirection, PathFillType, Point, RRect,
     Rect, Vector,
 };
 use skia_bindings as sb;
@@ -335,36 +335,10 @@ impl Handle<SkPath> {
         self
     }
 
-    pub fn convexity_type(&self) -> PathConvexityType {
-        unsafe { sb::C_SkPath_getConvexityType(self.native()) }
-    }
-
-    pub fn convexity_type_or_unknown(&self) -> PathConvexityType {
-        unsafe { sb::C_SkPath_getConvexityTypeOrUnknown(self.native()) }
-    }
-
-    pub fn set_convexity_type(&mut self, convexity: PathConvexityType) -> &mut Self {
-        unsafe { self.native_mut().setConvexityType(convexity) }
-        self
-    }
-
     pub fn is_convex(&self) -> bool {
-        self.convexity_type() == PathConvexityType::Convex
-    }
-
-    #[deprecated(since = "0.25.0", note = "use convexity_type()")]
-    pub fn convexity(&self) -> PathConvexityType {
-        self.convexity_type()
-    }
-
-    #[deprecated(since = "0.25.0", note = "use convexity_type_or_unknown()")]
-    pub fn convexity_or_unknown(&self) -> PathConvexityType {
-        self.convexity_type_or_unknown()
-    }
-
-    #[deprecated(since = "0.25.0", note = "use set_convexity_type()")]
-    pub fn set_convexity(&mut self, convexity: PathConvexityType) -> &mut Self {
-        self.set_convexity_type(convexity)
+        unsafe{
+            sb::C_SkPath_isConvex(self.native())
+        }
     }
 
     pub fn is_oval(&self) -> Option<Rect> {
@@ -527,11 +501,6 @@ impl Handle<SkPath> {
             self.native_mut()
                 .incReserve(extra_pt_count.try_into().unwrap())
         }
-        self
-    }
-
-    pub fn shrink_to_fit(&mut self) -> &mut Self {
-        unsafe { self.native_mut().shrinkToFit() }
         self
     }
 

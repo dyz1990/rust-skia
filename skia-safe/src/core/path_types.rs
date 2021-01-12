@@ -8,7 +8,7 @@ pub fn test_fill_type_naming() {
     let _ = PathFillType::InverseEvenOdd;
 }
 
-pub use skia_bindings::SkPathConvexityType as PathConvexityType;
+pub use skia_bindings::SkPathConvexity as PathConvexityType;
 #[test]
 fn test_convexity_type_naming() {
     let _ = PathConvexityType::Concave;

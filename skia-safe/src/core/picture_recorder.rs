@@ -4,12 +4,6 @@ use skia_bindings as sb;
 use skia_bindings::{SkPictureRecorder, SkRect};
 use std::ptr;
 
-bitflags! {
-    pub struct RecordFlags: u32 {
-        const PLAYBACK_DRAW_PICTURE = sb::SkPictureRecorder_RecordFlags_kPlaybackDrawPicture_RecordFlag as _;
-    }
-}
-
 pub type PictureRecorder = Handle<SkPictureRecorder>;
 
 impl NativeDrop for SkPictureRecorder {
@@ -31,16 +25,11 @@ impl Handle<SkPictureRecorder> {
         &mut self,
         bounds: impl AsRef<Rect>,
         mut bbh_factory: Option<&mut BBHFactory>,
-        record_flags: impl Into<Option<RecordFlags>>,
     ) -> &mut Canvas {
         let canvas_ref = unsafe {
             &mut *self.native_mut().beginRecording1(
                 bounds.as_ref().native(),
                 bbh_factory.native_ptr_or_null_mut(),
-                record_flags
-                    .into()
-                    .unwrap_or_else(RecordFlags::empty)
-                    .bits(),
             )
         };
 

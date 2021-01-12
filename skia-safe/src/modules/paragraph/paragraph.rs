@@ -1,7 +1,7 @@
 use super::{PositionWithAffinity, RectHeightStyle, RectWidthStyle, TextBox};
 use crate::prelude::*;
 use crate::textlayout::LineMetrics;
-use crate::{scalar, Canvas, Point};
+use crate::{scalar, Canvas, Color, Point};
 use skia_bindings as sb;
 use std::ops::{Index, Range};
 
@@ -111,6 +111,17 @@ impl RefHandle<sb::skia_textlayout_Paragraph> {
 
     pub fn mark_dirty(&self) {
         unsafe { sb::C_Paragraph_markDirty(self.native_mut_force()) }
+    }
+
+    pub fn updateForegroundColor(&self, from: usize, to: usize, color: Color) {
+        unsafe {
+            sb::C_Paragraph_updateForegroundColor(
+                self.native_mut_force(),
+                from.into(),
+                to.into(),
+                color.into_native(),
+            );
+        }
     }
 }
 

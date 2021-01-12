@@ -4,6 +4,7 @@
 
 mod bindings;
 pub use bindings::*;
+unsafe impl Send for SkBitmap{}
 
 mod defaults;
 pub use defaults::*;

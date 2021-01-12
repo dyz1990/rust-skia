@@ -276,6 +276,12 @@ extern "C" {
     void C_Paragraph_markDirty(Paragraph* self) {
         self->markDirty();
     }
+
+    void C_Paragraph_updateForegroundColor(Paragraph* self,size_t from, size_t to, SkColor color){
+        SkPaint paint;
+        paint.setColor(color);
+        self->updateForegroundPaint(from, to ,paint);
+    }
 }
 
 //

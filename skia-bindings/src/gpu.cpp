@@ -1,5 +1,5 @@
 #include "bindings.h"
-#include "include/gpu/GrContext.h"
+#include "include/gpu/GrDirectContext.h"
 #include "include/gpu/GrBackendDrawableInfo.h"
 #include "include/core/SkCanvas.h"
 #include "include/core/SkDrawable.h"
@@ -12,7 +12,7 @@
 //
 
 extern "C" SkSurface* C_SkSurface_MakeFromBackendTexture(
-        GrContext* context,
+        GrRecordingContext* context,
         const GrBackendTexture* backendTexture,
         GrSurfaceOrigin origin,
         int sampleCnt,
@@ -29,7 +29,7 @@ extern "C" SkSurface* C_SkSurface_MakeFromBackendTexture(
 }
 
 extern "C" SkSurface* C_SkSurface_MakeFromBackendRenderTarget(
-        GrContext* context,
+        GrRecordingContext* context,
         const GrBackendRenderTarget* backendRenderTarget,
         GrSurfaceOrigin origin,
         SkColorType colorType,
@@ -39,6 +39,33 @@ extern "C" SkSurface* C_SkSurface_MakeFromBackendRenderTarget(
     return SkSurface::MakeFromBackendRenderTarget(
             context,
             *backendRenderTarget,
+            origin,
+            colorType,
+            sp(colorSpace),
+            surfaceProps).release();
+}
+
+
+extern "C" SkSurface* C_SkSurface_MakeFromBackendRenderTarget2(
+        GrRecordingContext* context,
+        int width,int height,
+        int sampleCnt, int stencilBits,
+        int buffer,
+        int format,
+        GrSurfaceOrigin origin,
+        SkColorType colorType,
+        SkColorSpace* colorSpace,
+        const SkSurfaceProps* surfaceProps
+        ) {
+    GrGLFramebufferInfo fbInfo;
+    fbInfo.fFBOID = buffer;
+    fbInfo.fFormat = format;
+    GrBackendRenderTarget brt(
+        width, height,sampleCnt,stencilBits, fbInfo
+    );
+    return SkSurface::MakeFromBackendRenderTarget(
+            context,
+            brt,
             origin,
             colorType,
             sp(colorSpace),
@@ -73,13 +100,22 @@ extern "C" SkSurface* C_SkSurface_MakeRenderTarget2(
 }
 
 extern "C" SkSurface *C_SkSurface_MakeFromBackendTexture2(
-        GrContext *context,
-        const SkSurfaceCharacterization &characterization,
-        const GrBackendTexture *backendTexture) {
+        GrRecordingContext *context,
+        const GrBackendTexture& backendTexture,
+        GrSurfaceOrigin origin,
+        int sampleCnt,
+        SkColorType colorType,
+        SkColorSpace* colorSpace,
+        const SkSurfaceProps* surfaceProps
+        ) {
     return SkSurface::MakeFromBackendTexture(
             context,
-            characterization,
-            *backendTexture).release();
+            backendTexture,
+            origin,
+            sampleCnt,
+            colorType,
+            sp(colorSpace),
+            surfaceProps).release();
 }
 
 extern "C" void C_SkSurface_getBackendTexture(
@@ -219,22 +255,22 @@ extern "C" bool C_GrRecordingContext_abandoned(GrRecordingContext* self) {
 }
 
 //
-// gpu/GrContext.h
+// gpu/GrDirectContext.h
 //
 
-extern "C" void C_GrContext_flushAndSubmit(GrContext* self) {
+extern "C" void C_GrContext_flushAndSubmit(GrDirectContext* self) {
     self->flushAndSubmit();
 }
 
 extern "C" size_t C_GrContext_ComputeImageSize(SkImage* image, GrMipMapped mm, bool useNextPow2) {
-    return GrContext::ComputeImageSize(sp(image), mm, useNextPow2);
+    return GrDirectContext::ComputeImageSize(sp(image), mm, useNextPow2);
 }
 
-extern "C" void C_GrContext_compressedBackendFormat(const GrContext* self, SkImage::CompressionType compression, GrBackendFormat* result) {
+extern "C" void C_GrContext_compressedBackendFormat(const GrContext_Base* self, SkImage::CompressionType compression, GrBackendFormat* result) {
     *result = self->compressedBackendFormat(compression);
 }
 
-extern "C" void C_GrContext_performDeferredCleanup(GrContext* self, long msNotUsed) {
+extern "C" void C_GrContext_performDeferredCleanup(GrDirectContext* self, long msNotUsed) {
     self->performDeferredCleanup(std::chrono::milliseconds(msNotUsed));
 }
 
@@ -282,9 +318,9 @@ extern "C" GrBackendApi C_GrBackendDrawableInfo_backend(const GrBackendDrawableI
 // core/SkCanvas.h
 //
 
-extern "C" GrContext* C_SkCanvas_getGrContext(SkCanvas* self) {
-    return self->getGrContext();
-}
+//extern "C" GrContext* C_SkCanvas_getGrContext(SkCanvas* self) {
+//    return self->getGrContext();
+//}
 
 //
 // core/SkDrawable.h
@@ -361,12 +397,12 @@ extern "C" SkImage* C_SkImage_MakeFromYUVATexturesCopy(
         SkISize imageSize,
         GrSurfaceOrigin imageOrigin,
         SkColorSpace* colorSpace) {
-    return SkImage::MakeFromYUVATexturesCopy(
+    return SkImage::MakeFromYUVATextures(
             context,
             yuvColorSpace, yuvaTextures, yuvaIndices,
             imageSize, imageOrigin, sp(colorSpace)).release();
 }
-
+/*
 extern "C" SkImage* C_SkImage_MakeFromYUVATexturesCopyWithExternalBackend(
         GrRecordingContext* context,
         SkYUVColorSpace yuvColorSpace,
@@ -382,9 +418,9 @@ extern "C" SkImage* C_SkImage_MakeFromYUVATexturesCopyWithExternalBackend(
             imageSize, imageOrigin, backendTexture,
             sp(colorSpace)).release();
 }
-
+*/
 extern "C" SkImage* C_SkImage_MakeFromYUVATextures(
-        GrContext* context,
+        GrRecordingContext* context,
         SkYUVColorSpace yuvColorSpace,
         const GrBackendTexture yuvaTextures[],
         const SkYUVAIndex yuvaIndices[4],
@@ -398,18 +434,20 @@ extern "C" SkImage* C_SkImage_MakeFromYUVATextures(
 }
 
 extern "C" SkImage* C_SkImage_MakeFromNV12TexturesCopy(
-        GrContext* context,
+        GrRecordingContext* context,
         SkYUVColorSpace yuvColorSpace,
         const GrBackendTexture nv12Textures[2],
         GrSurfaceOrigin imageOrigin,
+        const GrBackendTexture& backendTexture,
         SkColorSpace* imageColorSpace) {
-    return SkImage::MakeFromNV12TexturesCopy(
+    return SkImage::MakeFromNV12TexturesCopyWithExternalBackend(
             context, yuvColorSpace, nv12Textures, imageOrigin,
+            backendTexture,
             sp(imageColorSpace)).release();
 }
 
 extern "C" SkImage* C_SkImage_MakeFromNV12TexturesCopyWithExternalBackend(
-        GrContext* context,
+        GrRecordingContext* context,
         SkYUVColorSpace yuvColorSpace,
         const GrBackendTexture nv12Textures[2],
         GrSurfaceOrigin imageOrigin,

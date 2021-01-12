@@ -1,27 +1,27 @@
 #[cfg(feature = "gpu")]
 use crate::gpu;
 use crate::prelude::*;
-use crate::{
-    Bitmap, Canvas, DeferredDisplayList, IPoint, IRect, ISize, Image, ImageInfo, Paint, Pixmap,
-    Size, SurfaceCharacterization, SurfaceProps,
-};
+use crate::{Bitmap, Canvas, DeferredDisplayList, IPoint, IRect, ISize, Image, ImageInfo, Paint, Pixmap, Size, SurfaceCharacterization, SurfaceProps, ColorType};
 use skia_bindings as sb;
 use skia_bindings::{SkRefCntBase, SkSurface};
 use std::ptr;
 
 pub use skia_bindings::SkSurface_ContentChangeMode as ContentChangeMode;
+
 #[test]
 fn test_surface_content_change_mode_naming() {
     let _ = ContentChangeMode::Retain;
 }
 
 pub use skia_bindings::SkSurface_BackendHandleAccess as BackendHandleAccess;
+
 #[test]
 fn test_surface_backend_handle_access_naming() {
     let _ = BackendHandleAccess::FlushWrite;
 }
 
 pub use skia_bindings::SkSurface_BackendSurfaceAccess as BackendSurfaceAccess;
+
 #[test]
 fn test_surface_backend_surface_access_naming() {
     let _ = BackendSurfaceAccess::Present;
@@ -56,7 +56,7 @@ impl RCHandle<SkSurface> {
                 surface_props.native_ptr_or_null(),
             )
         })
-        .map(move |surface| surface.borrows(pixels))
+            .map(move |surface| surface.borrows(pixels))
     }
 
     // TODO: MakeRasterDirect(&Pixmap)
@@ -87,7 +87,7 @@ impl RCHandle<SkSurface> {
 #[cfg(feature = "gpu")]
 impl RCHandle<SkSurface> {
     pub fn from_backend_texture(
-        context: &mut gpu::Context,
+        context: &mut gpu::RecordingContext,
         backend_texture: &gpu::BackendTexture,
         origin: gpu::SurfaceOrigin,
         sample_count: impl Into<Option<usize>>,
@@ -109,7 +109,7 @@ impl RCHandle<SkSurface> {
     }
 
     pub fn from_backend_render_target(
-        context: &mut gpu::Context,
+        context: &mut gpu::RecordingContext,
         backend_render_target: &gpu::BackendRenderTarget,
         origin: gpu::SurfaceOrigin,
         color_type: crate::ColorType,
@@ -127,18 +127,29 @@ impl RCHandle<SkSurface> {
             )
         })
     }
-
-    #[deprecated(since = "0.33.0", note = "removed without replacement")]
-    pub fn from_backend_texture_as_render_target(
-        _context: &mut gpu::Context,
-        _backend_texture: &gpu::BackendTexture,
-        _origin: gpu::SurfaceOrigin,
-        _sample_count: impl Into<Option<usize>>,
-        _color_type: crate::ColorType,
-        _color_space: impl Into<Option<crate::ColorSpace>>,
-        _surface_props: Option<&SurfaceProps>,
-    ) -> ! {
-        panic!("removed without replacement")
+    pub fn from_backend_render_target2(
+        context: &mut gpu::RecordingContext,
+        width:i32,height:i32,sampleCnt:i32,stencilBits:i32,
+        buffer: i32,
+        format: i32,
+        origin: gpu::SurfaceOrigin,
+        color_type: crate::ColorType,
+        color_space: impl Into<Option<crate::ColorSpace>>,
+        surface_props: Option<&SurfaceProps>,
+    ) -> Option<Self> {
+        Self::from_ptr(unsafe {
+            sb::C_SkSurface_MakeFromBackendRenderTarget2(
+                context.native_mut(),
+                width,height,sampleCnt,
+                stencilBits,
+                buffer as i32,
+                format as i32,
+                origin,
+                color_type.into_native(),
+                color_space.into().into_ptr_or_null(),
+                surface_props.native_ptr_or_null(),
+            )
+        })
     }
 
     #[cfg(feature = "metal")]
@@ -164,7 +175,7 @@ impl RCHandle<SkSurface> {
                 &mut drawable,
             )
         })
-        .map(|surface| (surface, drawable))
+            .map(|surface| (surface, drawable))
     }
 
     #[cfg(feature = "metal")]
@@ -228,15 +239,23 @@ impl RCHandle<SkSurface> {
     // TODO: support TextureReleaseProc / ReleaseContext
 
     pub fn from_backend_texture_with_caracterization(
-        context: &mut gpu::Context,
-        characterization: &SurfaceCharacterization,
+        context: &mut gpu::RecordingContext,
         backend_texture: &gpu::BackendTexture,
+        origin: gpu::SurfaceOrigin,
+        sampleCnt: i32,
+        colorType: ColorType,
+        colorSpace: &mut super::ColorSpace,
+        surfaceProps: SurfaceProps,
     ) -> Option<Self> {
         Self::from_ptr(unsafe {
             sb::C_SkSurface_MakeFromBackendTexture2(
                 context.native_mut(),
-                characterization.native(),
                 backend_texture.native(),
+                origin,
+                sampleCnt as ::std::os::raw::c_int,
+                colorType.into_native(),
+                colorSpace.native_mut(),
+                surfaceProps.native(),
             )
         })
     }
@@ -278,13 +297,6 @@ impl RCHandle<SkSurface> {
 
 #[cfg(feature = "gpu")]
 impl RCHandle<SkSurface> {
-    #[deprecated(
-        since = "0.35.0",
-        note = "Use recordingContext() and RecordingContext::as_direct_context()"
-    )]
-    pub fn context(&mut self) -> Option<gpu::Context> {
-        gpu::Context::from_unshared_ptr(unsafe { self.native_mut().getContext() })
-    }
 
     pub fn recording_context(&mut self) -> Option<gpu::RecordingContext> {
         gpu::RecordingContext::from_unshared_ptr(unsafe { self.native_mut().recordingContext() })
@@ -372,7 +384,7 @@ impl RCHandle<SkSurface> {
         Image::from_ptr(unsafe {
             sb::C_SkSurface_makeImageSnapshot(self.native_mut(), ptr::null())
         })
-        .unwrap()
+            .unwrap()
     }
 
     // TODO: combine this function with image_snapshot and make bounds optional()?
@@ -462,7 +474,14 @@ impl RCHandle<SkSurface> {
 
     pub fn flush_and_submit(&mut self) {
         unsafe {
-            self.native_mut().flushAndSubmit();
+            self.native_mut().flushAndSubmit(false);
+        }
+    }
+
+
+    pub fn flush_and_submit_sync_cpu(&mut self) {
+        unsafe {
+            self.native_mut().flushAndSubmit(true);
         }
     }
 
@@ -538,7 +557,7 @@ fn test_raster_direct() {
         Some(min_row_bytes),
         None,
     )
-    .unwrap();
+        .unwrap();
     let paint = Paint::default();
     surface.canvas().draw_circle((10, 10), 10.0, &paint);
 }

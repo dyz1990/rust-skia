@@ -36,6 +36,7 @@
 #include "include/core/SkMaskFilter.h"
 #include "include/core/SkPaint.h"
 #include "include/core/SkPath.h"
+#include "include/private/SkPathRef.h"
 #include "include/core/SkPathBuilder.h"
 #include "include/core/SkPathMeasure.h"
 #include "include/core/SkPathTypes.h"
@@ -153,6 +154,19 @@ extern "C" bool C_SkCodec_getValidSubset(const SkCodec* self, SkIRect* desiredSu
 extern "C" SkEncodedImageFormat C_SkCodec_getEncodedFormat(const SkCodec* self) {
     return self->getEncodedFormat();
 }
+
+extern "C" int C_SkCodec_getFrameCount(SkCodec* self) {
+    return self->getFrameCount();
+}
+
+extern "C" bool C_SkCodec_getFrameInfo(const SkCodec* self, int index, SkCodec::FrameInfo *info) {
+    return self->getFrameInfo(index, info);
+}
+
+extern "C" int C_SkCodec_getRepetitionCount(SkCodec* self) {
+    return self->getRepetitionCount();
+}
+
 
 //
 // codec/SkEncodedOrigin.h
@@ -396,6 +410,10 @@ extern "C" SkData* C_SkData_MakeWithoutCopy(const void* data, size_t length) {
     return SkData::MakeWithoutCopy(data, length).release();
 }
 
+extern "C" SkData* C_SkData_MakeFromFileName(const char* filename) {
+    return SkData::MakeFromFileName(filename).release();
+}
+
 extern "C" SkData* C_SkData_MakeEmpty() {
     return SkData::MakeEmpty().release();
 }
@@ -542,14 +560,18 @@ extern "C" SkPath::Verb C_SkPath_RawIter_peek(const SkPath::RawIter* self) {
 extern "C" SkPathFillType C_SkPath_getFillType(const SkPath* self) {
     return self->getFillType();
 }
-
-extern "C" SkPathConvexityType C_SkPath_getConvexityType(const SkPath* self) {
-    return self->getConvexityType();
+extern "C" bool C_SkPath_isConvex(const SkPath* self) {
+    return self->isConvex();
+}
+/*
+extern "C" SkPathConvexity C_SkPath_getConvexityType(const SkPath* self) {
+    return self->getConvexity();
 }
 
-extern "C" SkPathConvexityType C_SkPath_getConvexityTypeOrUnknown(const SkPath* self) {
-    return self->getConvexityTypeOrUnknown();
+extern "C" SkPathConvexity C_SkPath_getConvexityTypeOrUnknown(const SkPath* self) {
+    return self->getConvexityOrUnknown();
 }
+*/
 
 extern "C" bool C_SkPath_isEmpty(const SkPath* self) {
     return self->isEmpty();
@@ -604,7 +626,7 @@ extern "C" void C_SkPathMeasure_destruct(const SkPathMeasure* self) {
 //
 
 extern "C" void
-C_SkPathTypes_Types(SkPathFillType *, SkPathConvexityType *, SkPathDirection *, SkPathSegmentMask *, SkPathVerb *) {}
+C_SkPathTypes_Types(SkPathFillType *, SkPathConvexity *, SkPathDirection *, SkPathSegmentMask *, SkPathVerb *) {}
 
 //
 // core/SkCanvas.h
@@ -2413,11 +2435,11 @@ SkColorFilter* C_SkRuntimeEffect_makeColorFilter(SkRuntimeEffect* self, SkData* 
 const SkString *C_SkRuntimeEffect_source(const SkRuntimeEffect *self) {
     return &self->source();
 }
-
+/*
 uint32_t C_SkRuntimeEffect_hash(const SkRuntimeEffect *self) {
     return self->hash();
 }
-
+*/
 const SkRuntimeEffect::Uniform* C_SkRuntimeEffect_uniforms(const SkRuntimeEffect* self, size_t* count) {
     auto uniforms = self->uniforms();
     *count = uniforms.count();

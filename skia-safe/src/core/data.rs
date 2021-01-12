@@ -1,7 +1,11 @@
+use crate::interop::Stream;
 use crate::prelude::*;
 use skia_bindings as sb;
-use skia_bindings::SkData;
+use skia_bindings::{
+    C_SkData_MakeFromFileName, SkData, SkData_MakeFromFILE, SkData_MakeFromFileName,
+};
 use std::ffi::{CStr, CString};
+use std::fs::File;
 use std::ops::Deref;
 use std::slice;
 
@@ -98,8 +102,12 @@ impl RCHandle<SkData> {
         Data::from_ptr(unsafe { sb::C_SkData_MakeWithCString(cstr.as_ptr()) }).unwrap()
     }
 
-    // TODO: MakeFromFileName (not sure if we need that)
-    // TODO: MakeFromFile (not sure if we need that)
+    pub fn new_filename(filename: impl AsRef<str>) -> Option<Data> {
+        let data =
+            unsafe { C_SkData_MakeFromFileName(CString::new(filename.as_ref()).unwrap().as_ptr()) };
+        Data::from_ptr(data)
+    }
+
     // TODO: MakeFromStream
 
     pub fn new_empty() -> Self {

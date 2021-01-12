@@ -1,11 +1,15 @@
+use crate::codec::Options;
 use crate::prelude::*;
 use crate::{
-    AlphaType, Color, ColorSpace, ColorType, IPoint, IRect, ISize, ImageInfo, Paint, PixelRef,
-    Pixmap,
+    AlphaType, Codec, Color, ColorSpace, ColorType, Data, IPoint, IRect, ISize, ImageInfo, Paint,
+    PixelRef, Pixmap,
 };
 use crate::{Matrix, Shader, TileMode};
+use bitflags::_core::ptr::slice_from_raw_parts_mut;
 use skia_bindings as sb;
-use skia_bindings::SkBitmap;
+use skia_bindings::{SkBitmap, SkCodec_Result, SkCodec_ResultToString};
+use std::borrow::Cow;
+use std::ffi::{CStr};
 use std::{ffi, ptr};
 
 pub type Bitmap = Handle<SkBitmap>;
@@ -21,12 +25,72 @@ impl NativeClone for SkBitmap {
         unsafe { SkBitmap::new1(self) }
     }
 }
-
 // TODO: implement Default?
 
 impl Handle<SkBitmap> {
     pub fn new() -> Self {
         Self::construct(|bitmap| unsafe { sb::C_SkBitmap_Construct(bitmap) })
+    }
+
+    pub fn decode_data(
+        data: impl Into<Data>,
+        options: Option<&Options>,
+    ) -> Result<Self, Cow<'_, str>> {
+        unsafe {
+            let codec = Codec::from_data(data);
+            match codec {
+                Some(mut codec) => {
+                    let mut bitmap = Bitmap::new();
+                    bitmap.decode(&mut codec, false, options)?;
+                    Ok(bitmap)
+                },
+                None => Err(Cow::from("codec error")),
+            }
+        }
+    }
+
+    pub fn decode_codec(codec: & mut Codec, options: Option<& Options>) -> Result<Self, Cow<'static, str>> {
+        unsafe {
+            let mut bitmap = Bitmap::new();
+            bitmap.decode(codec, false, options)?;
+            Ok(bitmap)
+        }
+
+    }
+
+    pub unsafe fn decode(
+        &mut self,
+        codec: &mut Codec,
+        alloced: bool,
+        options: Option<&Options>,
+    ) -> Result<&mut Self, Cow<'static, str>> {
+        let info = codec.info();
+
+        let mut bm = self;
+        if !alloced || bm.is_null() {
+            let alloc = bm.try_alloc_pixels_info(&info, info.min_row_bytes());
+            if !alloc {
+                return Err(Cow::from("alloc_pixels_failed"));
+            }
+        }
+        {
+            let size = info.compute_min_byte_size();
+            if bm.pixels().is_null() {
+                return Err(Cow::from("bm pixels is null"));
+            }
+            if info.min_row_bytes()>bm.row_bytes() {
+                return Err(Cow::from("bm row_bytes less than info.min_row_bytes"));
+            }
+            let mut pixels = &mut *slice_from_raw_parts_mut(bm.pixels() as *mut u8, size);
+            let result = codec.get_pixels_with_options(bm.info(), pixels, bm.row_bytes(), options);
+            if result == SkCodec_Result::Success {
+                Ok(bm)
+            } else {
+                let string = SkCodec_ResultToString(result);
+                let error = CStr::from_ptr(string).to_string_lossy();
+                Err(error)
+            }
+        }
     }
 
     pub fn swap(&mut self, other: &mut Self) {

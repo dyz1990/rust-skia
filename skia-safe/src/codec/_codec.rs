@@ -2,7 +2,7 @@ use crate::prelude::*;
 use crate::{Data, EncodedImageFormat, EncodedOrigin, IRect, ISize, ImageInfo, Pixmap};
 use ffi::CStr;
 use skia_bindings as sb;
-use skia_bindings::{SkCodec, SkCodec_Options, SkRefCntBase};
+use skia_bindings::{C_SkCodec_getFrameCount, C_SkCodec_getFrameInfo, C_SkCodec_getRepetitionCount, SkAlphaType, SkCodec, SkCodecAnimation_DisposalMethod, SkCodec_FrameInfo, SkCodec_Options, SkRefCntBase, SkIRect};
 use std::{ffi, ptr};
 
 pub use sb::SkCodec_Result as Result;
@@ -26,6 +26,9 @@ fn test_selection_policy_naming() {
 }
 
 pub use sb::SkCodec_ZeroInitialized as ZeroInitialized;
+use std::os::raw::c_int;
+use bitflags::_core::ptr::null;
+
 #[test]
 fn test_zero_initialized_naming() {
     let _ = ZeroInitialized::Yes;
@@ -34,12 +37,54 @@ fn test_zero_initialized_naming() {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Options {
     pub zero_initialized: ZeroInitialized,
-    pub subset: IRect,
+    pub subset: Option<IRect>,
     pub frame_index: usize,
-    pub prior_frame: usize,
+    pub prior_frame: isize,
 }
 
+#[derive(Copy, Clone)]
+pub struct FrameInfo {
+    inner: SkCodec_FrameInfo,
+}
+pub type AlphaType = SkAlphaType;
+pub type DisposalMethod = SkCodecAnimation_DisposalMethod;
+
+impl FrameInfo {
+    fn new() -> Self {
+        Self {
+            inner: SkCodec_FrameInfo {
+                fRequiredFrame: 0,
+                fDuration: 0,
+                fFullyReceived: false,
+                fAlphaType: SkAlphaType::Unknown,
+                fDisposalMethod: SkCodecAnimation_DisposalMethod::kKeep,
+            },
+        }
+    }
+
+    pub fn required_frame(&self) -> i32 {
+        self.inner.fRequiredFrame as i32
+    }
+
+    pub fn duration(&self) -> usize {
+        self.inner.fDuration as usize
+    }
+
+    pub fn fully_received(&self) -> bool {
+        self.inner.fFullyReceived
+    }
+
+    pub fn alpha_type(&self) -> AlphaType {
+        self.inner.fAlphaType
+    }
+
+    pub fn disposal_method(&self) -> DisposalMethod {
+        self.inner.fDisposalMethod
+    }
+}
 pub type Codec = RCHandle<SkCodec>;
+pub const RepetitionCountInfinite: i32 = -1;
+pub const NoFrame: i32 = -1;
 
 impl NativeBase<SkRefCntBase> for SkCodec {}
 
@@ -141,12 +186,31 @@ impl RCHandle<SkCodec> {
     unsafe fn native_options(options: &Options) -> SkCodec_Options {
         SkCodec_Options {
             fZeroInitialized: options.zero_initialized,
-            fSubset: options.subset.native(),
+            fSubset: options.subset.map(|s|s.native() as *const SkIRect).unwrap_or(null()),
             fFrameIndex: options.frame_index.try_into().unwrap(),
             fPriorFrame: options.prior_frame.try_into().unwrap(),
         }
     }
 
+    pub fn get_frame_count(&mut self) -> i32 {
+        unsafe { C_SkCodec_getFrameCount(self.native_mut()) as i32 }
+    }
+
+    pub fn get_frame_info(&self, index: usize) -> Option<FrameInfo> {
+        unsafe {
+            let ptr = self.native();
+            let mut info = FrameInfo::new();
+            if C_SkCodec_getFrameInfo(ptr, index as c_int, &mut info.inner) {
+                Some(info)
+            } else {
+                None
+            }
+        }
+    }
+
+    pub fn get_repetition_count(&mut self) -> i32 {
+        unsafe { C_SkCodec_getRepetitionCount(self.native_mut()) as i32 }
+    }
     // TODO: queryYUV8
     // TODO: getYUV8Planes
     // TODO: startIncrementalDecode

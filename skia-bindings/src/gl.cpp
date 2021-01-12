@@ -7,7 +7,7 @@
 #endif
 
 #include "include/core/SkSurfaceCharacterization.h"
-#include "include/gpu/GrContext.h"
+//#include "include/gpu/GrContext.h"
 #include "include/gpu/GrDirectContext.h"
 #include "include/gpu/gl/GrGLExtensions.h"
 #include "include/gpu/gl/GrGLInterface.h"
@@ -130,6 +130,16 @@ extern "C" GrGLExtensions* C_GrGLInterface_extensions(GrGLInterface* self) {
     return &self->fExtensions;
 }
 
+
+extern "C" GrGLInterface::Functions* C_GrGLInterface_functions(GrGLInterface* self) {
+    return &self->fFunctions;
+}
+
+extern "C" GrGLint C_GrGLInterface_GetIntegerv(GrGLInterface* self,GrGLenum pname){
+    GrGLint params;
+    self->fFunctions.fGetIntegerv(pname, &params);
+    return params;
+}
 //
 // gpu/gl/GrGLAssembleInterface.h
 //
